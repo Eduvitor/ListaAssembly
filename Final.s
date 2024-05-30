@@ -2,7 +2,7 @@
 ###      Autor:      Eduardo Vitor Porfirio      ###
 ###      Matricula:  2221101030                  ###
 ###      Matéria:    Organização de computadores ###
-###      Professor:   Luciano Lores Caimi        ###
+###      Professor:  Luciano Lores Caimi        ###
 ####################################################
 
 
@@ -14,6 +14,7 @@ string2:    .string "Digite a opção que deseja:\n"
 string3:    .string "#####---MENU---####\n1) - Inserir elemento na lista:\n2) - Remover elemento por indice:\n3) - Remover elemento por valor:\n4) - Mostrar todos os elementos na lista:\n5) - Mostrar estatisticas:\n6) - Sair do programa:\n"
 string4:    .string "Digite: "
 string5:    .string "\nInforme o numero a ser adicionado: "
+lista_vazia: .string    "A lista está vazia!\n"
 head:       .word   0   #Definindo o endereço de inicio da lista e definindo como null
         .text
 main:   
@@ -66,6 +67,7 @@ call_rmvalue:
             j main
 
 call_print:
+            la a0, head #carrega o endereço inicial da lista
             jal print_list  # jump to print_list and save position to ra
             j main
 
@@ -92,8 +94,15 @@ remove_by_index: #função para remover por indice (return -1 error, return 0 su
 remove_by_value: #função para remover por indice (return -1 error, return 0 success)
             ret
 
-print_list: #printar lista no value returned
-            ret
+print_list:
+                lw t2, 0(a0) # 
+                beq t2, zero, empity_list # if a0 == zero then target
+
+empity_list:    #informa se a lista tá vazia
+                li a7, 4
+                la a0, lista_vazia #informa que a lista tá vazia 
+                ecall
+                ret
 
 print_statics: #Estatisticas da lista
             ret

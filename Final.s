@@ -17,8 +17,8 @@ string4:        .string "Digite: "
 string5:        .string "\nInforme o numero a ser adicionado: "
 lista_vazia:    .string "A lista está vazia!\n"
 succesInser:    .string "A inserção foi um sucesso!\n"
-failInser:      .string "Ocorre um problema na inserção!\n"
-numInserir:     .string "Número a ser inserido: "
+failInser:      .string "\nOcorreu um problema na inserção!\n"
+numInserir:     .string "\nNúmero a ser inserido: "
 head:           .word   0   #Definindo o endereço de inicio da lista e definindo como null
                 .text
 main:   
@@ -93,21 +93,39 @@ call_end:
 #####################---Implementação Das Funções---##########################
 
 
-insert_int: #função para inserir um numero inteiro na lista (return -1 insert error, return 0 insert success)
+insert_int:                             #função para inserir um numero inteiro na lista (return -1 insert error, return 0 insert success)
                 #alocando a memória necessária
-                lw t0, 0(a0) #Salva o valor do head 
-                mv t1, a0       #t1 armazena o valor da cabeça da lista
-                li a0, 8# a0 = 8      #tamanho de 8 bytes de alocação 4 valor 4 ponteiro retorno do endereço alocado está em a0
+                lw t0, 0(a0)            #Salva o valor do head 
+                mv t1, a0               #t1 armazena o valor da cabeça da lista
+                li a0, 8# a0 = 8        #tamanho de 8 bytes de alocação 4 valor 4 ponteiro retorno do endereço alocado está em a0
                 li a7, 9
                 ecall
-                sw a1, 0(a0) # adicionando o primeiro valor para a lista
-                sw zero, 4(a0) #define o proximo ponteiro como null
-                beqz t0, insert_ifnull #se a lista tiver totalmente vazia apenas adicionamos no inicio
+                sw a1, 0(a0)            #adicionando o primeiro valor para a lista
+                sw zero, 4(a0)          #define o proximo ponteiro como null
+                beqz t0, insert_ifnull  #se a lista tiver totalmente vazia apenas adicionamos no inicio
+                lw t3, 0(t0)            #carrega o valor do elemento head
+                lw t4, 0(a0)            #Carrega o valor do novo nó
+                ble t4, t3, insert_head #se o novo valor for menor que o que está no head então adicionamos no head
 go_end:
-                lw t2, 4(t0)
-                beqz t2, insert_notnull
-                mv t0, t2
+                lw t2, 4(t0)            #carrega o prox endereço
+                lw t5, 0(t0)            #Pega o valor do endereço atual
+                bge t5, t4, insert_middle #vai indicar a posição que o novo nó vai ser posiconado
+                mv t1, t0               #carrega o elemento anterior ao que foi testado
+                beqz t2, insert_notnull #testa se for nulo então insere no final
+                mv t0, t2               #anda pela lista
                 j go_end
+
+insert_head:
+                sw t0, 4(a0)            #Faz o ponteiro do novo head apontar para o antigo head 
+                sw a0, 0(t1)            #Faz o head da lista apontar para o novo node.
+                ret
+insert_middle:
+                #A lógica é percorrer a lista e encontrar a posição do novo valor, essa posição está em a0 
+                #Aqui devo apenas fazer o emponteiramento dos valores
+                sw t0, 4(a0)            #Faz o ponteiro do novo nó apontar para o antigo
+                sw a0, 4(t1)            #Faz o ponteiro do anterior apontar para o novo
+                ret
+
 insert_ifnull:
                 sw a0, 0(t1) #Apontamos para o primeiro indice
                 ret

@@ -12,11 +12,11 @@ fmt:            .string "\nElemento: "        #define um formato para printar os
 limpaTela:      .string "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 string1:        .string "\nBem vindo a lista encadeada em assembly do risc-v\n"
 string2:        .string "Digite a opção que deseja:\n"
-string3:        .string "#####---MENU---####\n1) - Inserir elemento na lista:\n2) - Remover elemento por indice:\n3) - Remover elemento por valor:\n4) - Mostrar todos os elementos na lista:\n5) - Mostrar estatisticas:\n6) - Sair do programa:\n"
+string3:        .string "\n#####---MENU---####\n1) - Inserir elemento na lista:\n2) - Remover elemento por indice:\n3) - Remover elemento por valor:\n4) - Mostrar todos os elementos na lista:\n5) - Mostrar estatisticas:\n6) - Sair do programa:\n"
 string4:        .string "Digite: "
 string5:        .string "\nInforme o numero a ser adicionado: "
 lista_vazia:    .string "A lista está vazia!\n"
-succesInser:    .string "A inserção foi um sucesso!\n"
+succesInser:    .string "\nA inserção foi um sucesso!\n"
 failInser:      .string "\nOcorreu um problema na inserção!\n"
 numInserir:     .string "\nNúmero a ser inserido: "
 head:           .word   0   #Definindo o endereço de inicio da lista e definindo como null
@@ -27,6 +27,8 @@ main:
                 ecall
                 la a0, string2 #
                 ecall
+print_menu:
+                li a7, 4
                 la a0, string3
                 ecall
                 la a0, string4 
@@ -47,7 +49,7 @@ main:
                 beq a0, t1, call_statics #se for igual a 5 ele vai printar a lista
                 li t1, 6 
                 beq a0, t1, call_end #vai para o fim do programa
-                j main  # jump to main
+                j print_menu  # jump to main
 
 #definição da chamada das funções e carregamento dos argumentos
 call_insert:
@@ -67,24 +69,30 @@ call_insert:
                 mv a1, a0 #carrega o valor que vai pedir do usuário em a1
                 la a0, head #carrega o inicio da lista 
                 jal insert_int  # jump to insert_int and save position to ra
-                j main  # jump to menu
+                li t6, 1
+                beq a0, t1, success	#Retorno de sucesso.
+success:
+		li a7, 4
+		la a0, succesInser
+		ecall
+                j print_menu  # jump to menu
             
 call_rmindex:
                 jal remove_by_index  # jump to remove_by_index and save position to ra
-                j main
+                j print_menu
 
 call_rmvalue:
                 jal remove_by_value  # jump to remove_by_value and save position to ra
-                j main
+                j print_menu
 
 call_print:
                 la a0, head #carrega o endereço inicial da lista
                 jal print_list  # jump to print_list and save position to ra
-                j main
+                j print_menu
 
 call_statics:
                 jal print_statics  # jump to print_statics and save position to ra
-                j main
+                j print_menu
 
 call_end:
                 li a7, 93
@@ -118,20 +126,25 @@ go_end:
 insert_head:
                 sw t0, 4(a0)            #Faz o ponteiro do novo head apontar para o antigo head 
                 sw a0, 0(t1)            #Faz o head da lista apontar para o novo node.
+                li a0, 1		 #Retorn
                 ret
 insert_middle:
                 #A lógica é percorrer a lista e encontrar a posição do novo valor, essa posição está em a0 
                 #Aqui devo apenas fazer o emponteiramento dos valores
                 sw t0, 4(a0)            #Faz o ponteiro do novo nó apontar para o antigo
                 sw a0, 4(t1)            #Faz o ponteiro do anterior apontar para o novo
+                li a0, 1		 #Retorno
                 ret
 
 insert_ifnull:
                 sw a0, 0(t1) #Apontamos para o primeiro indice
+                li a0, 1		 #Retorno
                 ret
 insert_notnull:
                 sw a0, 4(t0) # 
+                li a0, 1		 #Retorno
                 ret                
+#Fim dos labels para funcionamento da função de inserir um valor
 
 remove_by_index: #função para remover por indice (return -1 error, return 0 success)
                 ret
@@ -164,6 +177,6 @@ empity_list:    #informa se a lista tá vazia
                 la a0, lista_vazia #informa que a lista tá vazia 
                 ecall
                 ret
-
+#Fim dos labels para a função de printar uma lista
 print_statics: #Estatisticas da lista
                 ret

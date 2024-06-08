@@ -10,6 +10,7 @@
         .data
 fmt:            .string "\nElemento: "        #define um formato para printar os elementos 
 limpaTela:      .string "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+ErrorInsert:    .string "\nOcorreu um erro de alocacao, Desculpe!"
 string1:        .string "\nBem vindo a lista encadeada em assembly do risc-v\n"
 string2:        .string "Digite a opção que deseja:\n"
 string3:        .string "\n#####---MENU---####\n1) - Inserir elemento na lista:\n2) - Remover elemento por indice:\n3) - Remover elemento por valor:\n4) - Mostrar todos os elementos na lista:\n5) - Mostrar estatisticas:\n6) - Sair do programa:\n"
@@ -19,6 +20,12 @@ lista_vazia:    .string "A lista está vazia!\n"
 succesInser:    .string "\nA inserção foi um sucesso!\n"
 failInser:      .string "\nOcorreu um problema na inserção!\n"
 numInserir:     .string "\nNúmero a ser inserido: "
+stringStatic:   .string "\n###---Exibindo as estatisticas da lista---###"
+stringStatic1:  .string "\nMaior valor da lista: "
+stringStatic2:  .string "\nMenor valor da lista: "
+stringStatic3:  .string "\nNumero de elementos na lista: "
+stringStatic4:  .string "\nQuantidade de insercoes na lista: "
+stringStatic5:  .string "\nQuantidade de remocoes realizados: "
 head:           .word   0   #Definindo o endereço de inicio da lista e definindo como null
                 .text
 main:   
@@ -35,6 +42,11 @@ print_menu:
                 ecall
                 li a7, 5
                 ecall
+                li s2, 0 #Inicializa o resgistrador que vai guardar o maior valor
+                li s3, 0 #Registrador que vai guardar o menor valor
+                li s4, 0 #Inicializa o registrador que vai guardar a quantidade de insercoes realizadas
+                li s5, 0 #Registrador que vai guardar a quantidade de remocoes
+                li s6, 0 #Registrador para guardar 
                 add t0, a0, zero # t0 = a0 + zero
                 #inicia as comparações para saber qual função chamar 
                 li t1, 1
@@ -71,11 +83,18 @@ call_insert:
                 jal insert_int  # jump to insert_int and save position to ra
                 li t6, 1
                 beq a0, t1, success	#Retorno de sucesso.
+                li t6, -1
+                beq a0, t6, error       #Retorno de erro da funcao
 success:
 		li a7, 4
 		la a0, succesInser
 		ecall
                 j print_menu  # jump to menu
+error:
+                la a0, ErrorInsert
+                li a7, 4
+                ecall
+                j print_menu
             
 call_rmindex:
                 jal remove_by_index  # jump to remove_by_index and save position to ra
@@ -91,6 +110,11 @@ call_print:
                 j print_menu
 
 call_statics:
+                #Registradores S usados para armazenar as estatisticas da lista
+                li a7, 4
+                la a0, stringStatic #printa o inicio das mensagens das estatisticas
+                ecall
+                la a0, head
                 jal print_statics  # jump to print_statics and save position to ra
                 j print_menu
 
@@ -108,6 +132,8 @@ insert_int:                             #função para inserir um numero inteiro
                 li a0, 8# a0 = 8        #tamanho de 8 bytes de alocação 4 valor 4 ponteiro retorno do endereço alocado está em a0
                 li a7, 9
                 ecall
+                li t6, -1               #Carrega o valor de erro de alocacao -1
+                beq a0, t6, error_malloc   #Testa se o endereco retornado n
                 sw a1, 0(a0)            #adicionando o primeiro valor para a lista
                 sw zero, 4(a0)          #define o proximo ponteiro como null
                 beqz t0, insert_ifnull  #se a lista tiver totalmente vazia apenas adicionamos no inicio
@@ -143,14 +169,17 @@ insert_ifnull:
 insert_notnull:
                 sw a0, 4(t0) # 
                 li a0, 1		 #Retorno
+                ret
+
+error_malloc:
+                li a0, -1               #retorno de erro da func
                 ret                
 #Fim dos labels para funcionamento da função de inserir um valor
 
 remove_by_index: #função para remover por indice (return -1 error, return 0 success)
                 ret
 
-remove_by_value: #função para remover por indice (return -1 error, return 0 success)
-                
+remove_by_value: #função para remover por indice (return -1 error, return 0 success)      
                 ret
 
 print_list:
@@ -179,4 +208,28 @@ empity_list:    #informa se a lista tá vazia
                 ret
 #Fim dos labels para a função de printar uma lista
 print_statics: #Estatisticas da lista
+                #capturar o menor valor da lista
+                lw t0, 0(a0) #Salva o endereco do primeiro elemento
+                lw s3, 0(t0) #Salva o menor valor da lista como esta ordenada e sempre o primeiro.
+                li a7, 4
+                la a0, stringStatic2
+                ecall
+                li a7, 1
+                mv a0, s3
+                ecall           
+                #vai atras do maior valor
+percorrer_fim:
+                lw t0, 4(t0) #Carrega o proximo valor presente na lista
+                #bnez t0, percorrer_fim
+                beq t0, zero, printa_maior
+                mv t1, t0       #Pega o item da lista anterior, util quando chegar no ultimo
+                j percorrer_fim
+printa_maior:
+                la a0, stringStatic1
+                li a7, 4
+                ecall
+                li a7, 1
+                lw a0, 0(t1)    #Carrega em a0 o valor do ultimo node
+                #Percorre a lista e encontra o maior valor que esta no fim da lista
+                ecall
                 ret

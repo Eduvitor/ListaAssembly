@@ -10,7 +10,6 @@
 #Começo do programa
         .data
 fmt:            .string "\nElemento: " 
-limpaTela:      .string "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 ErrorInsert:    .string "\nOcorreu um erro de alocacao, Desculpe!"
 string1:        .string "\nBem vindo a lista encadeada em assembly do risc-v\n"
 string2:        .string "Digite a opção que deseja:\n"
@@ -34,7 +33,7 @@ m_sucess_rm:    .string "\nO valor foi removido com sucesso!\nIndice removido: "
 stringExcludeI:  .string "\nIndice a ser removido: "
 valueExcludeS:  .string "\nA exclusao do elemento foi um sucesso\nValor removido: "
 errorExclude:   .string "\nO valor informado nao esta presente na lista!"
-errorExcludeOutR: .string "\nVoce digitou um indice que esta fora do range da lista!\nDigite um valor valido!"
+errorExcludeOutR: .string "\nVoce digitou um indice que esta fora do range da lista!\nDigite um indice valido!"
 head:           .word   0   #Definindo o endereço de inicio da lista e definindo como null
                 .text
 main:   
@@ -44,7 +43,7 @@ main:
                 la a0, string2 #
                 ecall
                 li s4, 0 #Inicializa o registrador que vai guardar a quantidade de insercoes realizadas
-                li s5, 0 #Registrador que vai guardar a quantidade de remocoes
+                li s5, 0 #Registrador que vai guardar a quantidade de remocoes || Remocoes = Num de elementos na lista - Num de remocoes realizadas
 print_menu:
                 li a7, 4
                 la a0, string3
@@ -53,7 +52,6 @@ print_menu:
                 ecall
                 li a7, 5
                 ecall
-                #li s2, 0 #Inicializa o resgistrador que vai guardar o maior valor
                 add t0, a0, zero # t0 = a0 + zero
                 #inicia as comparações para saber qual função chamar 
                 li t1, 1
@@ -104,9 +102,35 @@ error:
                 j print_menu
             
 call_rmindex:
-                jal remove_by_index  # jump to remove_by_index and save position to ra
+                la a0, head
+                lw t0, 0(a0)
+                beq t0, zero, empity_list #Testamos se a lista ta vazia
+                la a0, stringUI
+                li a7, 4 
+                ecall
+                li a7, 5
+                ecall
+                mv a1, a0       #Salva o valor digitado pelo usuário
+                la a0, head     #Retorna o valor de head para a0
+                jal remove_by_index  # jump to remove_by_index and save  position to ra
+                li t6, 1
+                beq t6, a0, rmindex_success # if t0 == t1 then target
+                li t6, -1
+                beq t6, a0, rmindex_error       #Testa se teve erro no retorno
+rmindex_success: #a1 valor do elemento a remover
+                la a0, valueExcludeS
+                li a7, 4
+                ecall
+                mv a0, a1
+                li a7, 1
+                ecall
                 j print_menu
-
+rmindex_error:
+                la a0, errorExcludeOutR
+                li a7, 4
+                ecall
+                j print_menu  # jump to print_menu
+            
 call_rmvalue:
                 la a0, head
                 lw t2, 0(a0) #Carrega o enderecos
@@ -120,7 +144,7 @@ call_rmvalue:
                 la a0, stringExcludeV #Printa o valor a ser removido
                 li a7, 4
                 ecall
-                li a7, 1        #printar inteiro
+                li a7, 1        # 1 printar inteiro
                 mv a0, a1 
                 ecall
                 la a0, head
@@ -216,11 +240,51 @@ error_malloc:
 
 remove_by_index: #função para remover por indice (return -1 error, return 0 success)
                 #a0 head da lista a1 indice a ser removido 
-                ret
+                lw t1, 0(a0)    #Carrega o endereço do primeiro elemento
+                li t3, 0        #Inicializa o contador de indices
+                beq t3, a1, remove_head_index   #Se o indice a ser removido é o head ja identificamos aqui para remove-lo
+percorrer_index:
+                #Indice a ser removido está em a1
+                lw t2, 4(t1) #pegamos o prox elemento
+                beq t3, a1, achou_index #Se t3 for igual a a1 então achamos o index a ser removido
+                addi t3, t3, 1 #Incrementa o contador de indice
+                beqz t2, index_not_exists       #se chegarmos ao final da lista significa que o indice não foi encontrado 
+                mv t4, t1       #Salva o elemento anterior
+                mv t1, t2       #Caminha pela lista 
+                j percorrer_index
 
+achou_index:	#Chegou aqui é pq achamos o indice
+                lw t5, 4(t1) #Carrega o prox elemento
+                beqz t5, remove_index_fim	#Se o index que foi achado é o ultimo da lista então nosso cenário de remoção é no fim da lista  
+#Quando precisamos remover no meio da lista
+remove_index_meio:
+		sw t5, 4(t4)
+		lw a1, 0(t1)	#Retorno do valor a ser removido 
+		sw zero, 4(t1) #Seta o ponteiro do nó removido para 0 pois não é necessario que ele saiba a localização da lista na memória
+		li a0, 1	#Retorno de sucesso
+		ret
+
+#Quando o indice não existe
+index_not_exists:
+                li a0, -1       #Código de erro que o indice não foi encontrado 
+                ret
+#Situação onde remove o elemento do head sem nó adjacentes
+remove_head_index:
+		li t0, 0 
+		lw t2, 4(t1)	#Carregamos o próx elemento 
+		sw t2, 0(a0)	#Seta o head como o prox elemento se for 0 head vai valer 0
+		lw a1, 0(t1)
+               	li a0, 1
+               	ret	
+remove_index_fim:
+		li a1, 0 
+		sw a1, 4(t4)	#Seta o ponteiro do nó anterior como zero
+		li a0, 1	#Retorno de sucesso
+		lw a1, 0(t1)	#Retorna o valor que foi removido 
+		ret
+#FIm dos labels para remocao por indice
 remove_by_value: #função para remover por indice (return -1 error, return 0 success)
                 #a0 head da lista, a valor a ser removido
-                #li t0, -1       #carrega o valor -1 em t0 ele vai guardar se o valor for encontrado
                 lw t1, 0(a0)    #Carregam o primeiro elemento
                 lw t5, 0(t1)    #Carrega o valor do primeiro elemento
                 mv s2, zero  #Inicializa o contador de indices
@@ -236,9 +300,6 @@ search_loop:    #a situacao complica um pouco caso o elemento a ser removido é 
                 j search_loop           #Volta para o loop
 
 find_remove:    #Aqui ja achamos o valor a remover na lista
-                li a7, 1
-                mv a0, t3
-                ecall
                 lw t5, 4(t1)    #Carregamos o endereço do ponteiro para o prox elemento
                 beqz t5, remove_fim #Testa para ver se ele é o ultimo elemento da lista.
 
@@ -259,18 +320,11 @@ remove_fim:     #Simplesmente desfazer o emponteiramento do penultimo no setando
 remove_inicio:  #Head deve guardar o valor do ponteiro do no removido caso ele for o primeiro, devemos setar o head para 0
                 li t0, 0        #Carregamos o t0 com 0 para redefinimos o head
                 lw t2, 4(t1)    #Carrega o ponteiro do primeiro nó
-                bne t2, t0, not_unique     #Testa para ver se o elemento é o unico da lista
-                sw t0, 0(a0)    #Seta o head como zero
+                #bne t2, t0, not_unique     #Testa para ver se o elemento é o unico da lista
+                sw t2, 0(a0)    #Seta o head como zero
                 li a1, 1        #Retorno de sucesso
                 mv a2, s2
                 ret
-
-not_unique:     #Indica que o head não é o unico elemento da lista portanto devemos fazer o head apontar para o elemento que vai ser removido está apontando 
-                sw t2, 0(a0)    #Faz o head apontar para o prox elemento
-                li a0, 1        #Retorno de sucesso
-                mv a2, s2
-                ret
-
 not_achou:      #Informa ao usuario que nao achou o valor e retorna -1 para indicar erro!
                 li a0, -1 
                 ret
@@ -297,13 +351,13 @@ empity_list:    #informa se a lista tá vazia
                 li a7, 4
                 la a0, lista_vazia #informa que a lista tá vazia 
                 ecall
-                ret
+                j print_menu
 #Fim dos labels para a função de printar uma lista
 print_statics: #Estatisticas da lista
                 #capturar o menor valor da lista
                 lw t2, 0(a0) #Carrega o endereco
-                beq t2, zero, empity_list # if a0 == zero then target
                 li s6, 0 #Registrador para guardar o numero de elementos na lista
+                beq t2, zero, lista_vazia_statics# if a0 == zero then target
                 lw t0, 0(a0) #Salva o endereco do primeiro elemento
                 li a7, 4
                 la a0, stringStatic2    
@@ -312,7 +366,10 @@ print_statics: #Estatisticas da lista
                 #mv a0, s3
                 lw a0, 0(t0)
                 ecall        #Printa o menor da lista
+                #lw t5, 4(t0) #Testa se a tem apenas um elemento
+                #beqz t5, printa_maior
                 #vai atras do maior valor
+                mv t1, t2
 percorrer_fim:
                 lw t0, 4(t0) #Carrega o proximo valor presente na lista
                 #bnez t0, percorrer_fim
@@ -326,8 +383,8 @@ printa_maior:
                 li a7, 4
                 ecall
                 li a7, 1
-                nop
-                lw a0, 0(t1)    #Carrega em a0 o valor do ultimo node
+                lw a0, 0(t1)
+                #mv a0, t2    #Carrega em a0 o valor do ultimo node informa erro nessa linha quando temos apenas um item na lista
                 #Percorre a lista e encontra o maior valor que esta no fim da lista
                 ecall
                 li a7, 4
@@ -336,11 +393,18 @@ printa_maior:
                 li a7, 1 
                 mv a0, s6
                 ecall
+lista_vazia_statics:
                 la a0, stringStatic4 #printa o numero de insercoes realizadas na lista 
                 li a7, 4
                 ecall
                 mv a0, s4
                 li a7, 1
+                ecall
+                la a0, stringStatic5	#Printar número de remocoes realizadas
+                li a7, 4
+                ecall
+                li a7, 1
+                sub a0, s4, s6	#Subtrai o numero de insercoes pelo numero de elementos na lista
                 ecall
                 ret
 
